@@ -89,20 +89,14 @@ def readmatrices(priorfilename, emitfilename, transfilename):
     transfile.close()
     return [priorlength, height_e, width_e, height_t, width_t]
 
-
-#def calculatealpha(dim, t, j):
-
-
-#def calculatebeta():
-
-
-def makepredictions(dim):
+def makepredictions(dim, predictionfilename):
     priorlength = dim[0]
     height_e = dim[1]
     width_e = dim[2]
     height_t = dim[3]
     width_t = dim[4]
 
+    predictfile = open(predictionfilename,"w")
 
     start = 0
     for w in range(0, len(widths)):
@@ -149,11 +143,13 @@ def makepredictions(dim):
                 if p > maxp:
                     maxp = p
                     maxtags[i] = j
-
-        print maxtags
+            predictfile.write(words.keys()[words.values().index(test[start+i][1])] + "_" + tags.keys()[tags.values().index(maxtags[i])] + " ")
+        predictfile.write("\n")
+        #print maxtags
         start = start + widths[w] + 1
+
 
 
 readtestfile(sys.argv[1], sys.argv[2], sys.argv[3])
 dim = readmatrices(sys.argv[4], sys.argv[5], sys.argv[6])
-makepredictions(dim)
+makepredictions(dim, sys.argv[7])
