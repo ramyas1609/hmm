@@ -7,7 +7,7 @@ trans = []
 words = {}
 tags = {}
 test = []
-
+widths = []
 
 
 def readtestfile(testfilename, wordfilename, tagfilename):
@@ -28,18 +28,19 @@ def readtestfile(testfilename, wordfilename, tagfilename):
         tags[line.rstrip()] = l
         l = l + 1
 
-    #print tags
+    print tags
 
     for line in testfile.readlines():
         a = line.split(" ")
         l = 0
+        widths.append(len(a))
         for b in a:
             c = b.rstrip().split("_")
             test.append([l + 1, words[c[0]], tags[c[1]]])
             l = l + 1
         test.append([-1, -1, -1])
 
-    print test
+    #print "test", test
 
     testfile.close()
     tagfile.close()
@@ -57,7 +58,7 @@ def readmatrices(priorfilename, emitfilename, transfilename):
         prior.append(np.float64(line.rstrip()))
         priorlength = priorlength + 1
 
-    #print prior
+    #print "prior", prior
 
     width_e = 0
     height_e = 0
@@ -69,7 +70,7 @@ def readmatrices(priorfilename, emitfilename, transfilename):
             emit.append(np.float64(e))
         height_e = height_e + 1
 
-    #print emit
+    #print "emit", emit
 
     width_t = 0
     height_t = 0
@@ -81,7 +82,7 @@ def readmatrices(priorfilename, emitfilename, transfilename):
             trans.append(np.float64(e))
         height_t = height_t + 1
 
-    #print trans
+    #print "trans", trans
 
     priorfile.close()
     emitfile.close()
@@ -102,66 +103,55 @@ def makepredictions(dim):
     height_t = dim[3]
     width_t = dim[4]
 
-    #predict first test sentence only
-
-    #get length of sentence
 
     start = 0
-    end = len(test)
-    width_s = 0
-    for x in range(start, end):
-        if test[x][0] == -1:
-            break
-        else:
-            width_s = width_s + 1
-    print width_s, height_t
+    for w in range(0, len(widths)):
+        width_s = widths[w]
 
-    alpha = [np.float64(0.0)] * (height_t * width_s)
+        alpha = [np.float64(0.0)] * (height_t * width_s)
 
-    x1 = test[start][1]
-    for j in range(0, height_t):
-        alpha[j*width_s] = prior[j] * emit[j * width_e + x1]
-
-    print "alpha", alpha
-
-    for t in range(1, width_s):
-        xt = test[start+t][1]
+        x1 = test[start][1]
         for j in range(0, height_t):
-            p = 0
-            for k in range(0, height_t):
-                p = p + (trans[k * width_t + j] * alpha[(k*width_s) + t-1])
-            alpha[j*width_s + t] = emit[j * width_e + xt] * p
-    print "alpha", alpha
+            alpha[j*width_s] = prior[j] * emit[j * width_e + x1]
 
-    beta = [np.float64(0.0)] * (height_t * width_s)
+        for t in range(1, width_s):
+            xt = test[start+t][1]
+            for j in range(0, height_t):
+                p = 0
+                for k in range(0, height_t):
+                    p = p + (trans[k * width_t + j] * alpha[(k*width_s) + t-1])
+                alpha[j*width_s + t] = emit[j * width_e + xt] * p
+        #print "alpha", alpha
 
-    for j in range(0, height_t):
-        beta[j*width_s + (width_s-1)] = np.float64(1.0)
+        beta = [np.float64(0.0)] * (height_t * width_s)
 
-    print "beta", beta
-
-    t = width_s - 2
-    while t >= 0:
         for j in range(0, height_t):
-            p = 0
-            for k in range(0, height_t):
-                print trans[j * width_t + k], beta[(k*width_s) + t+1]
-                p = p + (trans[j * width_t + k] * beta[(k*width_s) + t+1] * emit[j * width_e + k])
-            beta[j*width_s + t] = p
-            print beta
-        t = t - 1
+            beta[j*width_s + (width_s-1)] = np.float64(1.0)
 
-    #find max a_t * b_t
-    max = 0
-    print alpha[1]*beta[1] , alpha[4]*beta[4]
+        t = width_s - 2
+        while t >= 0:
+            x_t_1 = test[start + t + 1][1]
+            for j in range(0, height_t):
+                p = 0
+                for k in range(0, height_t):
+                    p = p + (trans[j * width_t + k] * beta[(k*width_s) + t+1] * emit[k * width_e + x_t_1])
+                beta[j*width_s + t] = p
+            t = t - 1
 
+        #print "beta", beta
 
+        maxtags = [0] * width_s
 
+        for i in range(0, width_s):
+            maxp = 0
+            for j in range(0, height_t):
+                p = alpha[j*width_s+i] * beta[j*width_s+i]
+                if p > maxp:
+                    maxp = p
+                    maxtags[i] = j
 
-
-
-
-
+        print maxtags
+        start = start + widths[w] + 1
 
 
 readtestfile(sys.argv[1], sys.argv[2], sys.argv[3])
